@@ -19,7 +19,8 @@ if [ "$1" = --mv ]; then
     cmd='mv'
     shift
 else
-    cmd='cp -r'
+    cmd='cp
+-r'
 fi
 
 if [ "$1" = --new-line ]; then
@@ -29,27 +30,58 @@ else
     R='\r'
 fi
 
-if [ $# -lt 2 ]; then
-    echo "ERROR: you must specify at least two arguments, a source and a destination"
+# ARGS STUFF
+
+srcs=''
+dest=''
+opts=''
+
+i=1
+while [ $i -le $# ]; do
+    arg=$(eval echo '$'$i)
+    if [ $i = $# ] && [ ! "$dest" ]; then
+        dest="$arg"
+        break
+    fi
+    if [ -e "$arg" ]; then
+        srcs="$srcs$arg
+"
+    elif [ "$arg" = '-t' ]; then
+        i=$((i + 1))
+        dest=$(eval echo '$'$i)
+    else
+        opts="$opts$arg
+"
+    fi
+    i=$((i + 1))
+done
+
+# remove last empty line
+srcs=$(echo "$srcs" | head -c -1)
+
+if [ ! "$srcs" ] || [ ! "$dest" ]; then
+    if [ "$cmd" = mv ]; then
+        mv --help
+    else
+        cp --help
+    fi
     exit 1
 fi
+
+# THE ACTUAL THING
 
 printf 'Calculating size'$R
 
 exists=0
 total_size=0
-argnum=1
-while [ $argnum -lt $# ]; do
-    src=$(eval echo '$'$argnum)
-    if [ -e "$src" ]; then
-        exists=1
-        arg_size=$(du -sb "$src"  2>/dev/null | awk '{print $1}')
-        if [ -n "$arg_size" ]; then
-            total_size=$(( total_size + arg_size ))
-        fi
-    fi
-    argnum=$(( argnum + 1 ))
-done
+IFS='
+'; for src in $srcs; do
+       exists=1
+       arg_size=$(du -sb "$src" 2>/dev/null | awk '{print $1}')
+       if [ -n "$arg_size" ]; then
+           total_size=$((total_size + arg_size))
+       fi
+   done
 
 if [ "$exists" = "0" ]; then
     echo "ERROR: No source file specified exists. Please try again"
@@ -58,35 +90,24 @@ fi
 
 total_size_h=$(echo $total_size | awk "$H_FUN"'{print human($1)}')
 
-argnum=1
 count=0
-dest=$(eval echo '$'$#)
-opts=''
-while [ $argnum -lt $# ]; do
-    src=$(eval echo '$'$argnum)
-
-    if [ -e "$src" ]; then
-
-        strace -q -ewrite $cmd $opts "$src" "$dest" 2>&1 |
-            awk "$H_FUN"'{
+IFS='
+'; for src in $srcs; do
+       strace -q -ewrite $cmd $opts "$src" "$dest" 2>&1 |
+           awk "$H_FUN"'{
             count += $NF
             if (count % 10 == 0) {
                 percent = (count / total_size) * 100
                 printf "%3d%% (%s/%s) %s to %s'$R'", percent, human(count), total_size_h, src, dest
             }
         }' total_size=$total_size \
-                total_size_h="$total_size_h" \
-                count=$count \
-                src="$src" dest="$dest"
+               total_size_h="$total_size_h" \
+               count=$count \
+               src="$src" dest="$dest"
 
-        arg_size=$(du -sb "$src" 2>/dev/null | awk '{ print $1 }')
-        count=$(( count + arg_size ))
-    else
-        opts="$opts $src"
-    fi
-
-    argnum=$(( argnum + 1 ))
-done
+       arg_size=$(du -sb "$src" 2>/dev/null | awk '{ print $1 }')
+       count=$((count + arg_size))
+   done
 
 if [ "$cmd" = mv ]; then
     printf 'Done moving'$R
