@@ -33,6 +33,7 @@ fi
 # ARGS STUFF
 
 srcs=''
+srcF=''
 dest=''
 opts=''
 
@@ -49,12 +50,25 @@ while [ $i -le $# ]; do
     elif [ "$arg" = '-t' ]; then
         i=$((i + 1))
         dest=$(eval echo '$'$i)
+    elif [ "$arg" = '-F' ]; then
+        ##### -F: file including sources files #####
+        i=$((i + 1))
+        srcF=$(eval echo '$'$i)
     else
         opts="$opts$arg
 "
     fi
     i=$((i + 1))
 done
+
+if [ "$srcF" ]; then
+    while read -r line; do
+        if [ -e "$line" ]; then
+            srcs="$srcs$line
+"
+        fi
+    done < "$srcF"
+fi
 
 # remove last empty line
 srcs=$(echo "$srcs" | head -c -1)
@@ -93,17 +107,24 @@ total_size_h=$(echo $total_size | awk "$H_FUN"'{print human($1)}')
 count=0
 IFS='
 '; for src in $srcs; do
-       strace -q -ewrite $cmd $opts "$src" "$dest" 2>&1 |
+       # if same name
+       fname=$(basename "$src")
+       if [ -e "$dest/$fname" ]; then
+           finaldest="$dest/$fname-new"
+       else
+           finaldest="$dest"
+       fi
+       strace -q -ewrite $cmd $opts "$src" "$finaldest" 2>&1 |
            awk "$H_FUN"'{
             count += $NF
-            if (count % 10 == 0) {
+            if (total_size > 0 && count % 10 == 0) {
                 percent = (count / total_size) * 100
-                printf "%3d%% (%s/%s) %s to %s'$R'", percent, human(count), total_size_h, src, dest
+                printf "%3d%% (%s/%s) %s to %s'$R'", percent, human(count), total_size_h, src, finaldest
             }
         }' total_size=$total_size \
                total_size_h="$total_size_h" \
                count=$count \
-               src="$src" dest="$dest"
+               src="$src" finaldest="$finaldest"
 
        arg_size=$(du -sb "$src" 2>/dev/null | awk '{ print $1 }')
        count=$((count + arg_size))
