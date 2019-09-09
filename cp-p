@@ -109,10 +109,9 @@ IFS='
 '; for src in $srcs; do
        # if same name
        fname=$(basename "$src")
+       finaldest=$(realpath "$dest")
        if [ -e "$dest/$fname" ]; then
            finaldest="$dest/$fname-new"
-       else
-           finaldest="$dest"
        fi
        strace -q -ewrite $cmd $opts "$src" "$finaldest" 2>&1 |
            awk "$H_FUN"'{
