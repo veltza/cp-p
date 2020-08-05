@@ -2,9 +2,11 @@
 # Based on https://github.com/ericpaulbishop/cp_p
 # and https://unix.stackexchange.com/questions/44040/a-standard-tool-to-convert-a-byte-count-into-human-kib-mib-etc-like-du-ls1
 
-# FIXME: when cmd == mv, '\r' doesn't work no idea why...
-
-H_FUN='function human(x) {
+H_FUN='
+function human(x) {
+    if (x < 0) {
+       return "..."
+    }
     s=" B   KiB MiB GiB TiB EiB PiB YiB ZiB"
     while (x >= 1024 && length(s) > 1) {
         x /= 1024
@@ -13,6 +15,17 @@ H_FUN='function human(x) {
     s = substr(s, 1, 4)
     xf = (s == " B  ") ? "%d" : "%.2f"
     return sprintf(xf"%s", x, s)
+}
+function human_time(t) {
+    if (t < 0) {
+       return "..."
+    }
+    h = int(t / 3600)
+    m = int(t / 60) % 60
+    s = t % 60
+    if (h == 0) {h = ""} else {h = sprintf("%dh ", h)}
+    if (m == 0) {m = ""} else {m = sprintf("%dm ", m)}
+    return sprintf("%s%s%.1fs", h, m, s)
 }'
 
 if [ "$1" = --mv ]; then
@@ -25,9 +38,13 @@ fi
 
 if [ "$1" = --new-line ]; then
     R='\n'
+    B=''
+    W=99999999
     shift
 else
-    R='\r'
+    R=''
+    B='\033[0E\033[K'
+    W=$(tput cols)
 fi
 
 # ARGS STUFF
@@ -84,7 +101,7 @@ fi
 
 # THE ACTUAL THING
 
-printf 'Calculating size'$R
+printf $B'Calculating size'$R
 
 exists=0
 total_size=0
@@ -114,13 +131,25 @@ IFS='
            finaldest="$dest/$fname-new"
        fi
        strace -q -ewrite $cmd $opts "$src" "$finaldest" 2>&1 |
-           awk "$H_FUN"'{
+           awk "$H_FUN"'
+        BEGIN { time_start = systime() }
+        {
+            time_elapsed = systime() - time_start
             count += $NF
+            if (time_elapsed == 0) {
+                bytes_per_sec = -1
+                eta = -1
+            } else {
+                bytes_per_sec = count/time_elapsed
+                eta = (total_size - count) / bytes_per_sec
+            }
             if (total_size > 0 && count % 10 == 0) {
                 percent = (count / total_size) * 100
-                printf "%3d%% (%s/%s) %s to %s'$R'", percent, human(count), total_size_h, src, finaldest
+                printf "'$B'"substr(sprintf("%3d%% (%s/%s, %s/s, ETA: %s) %s to %s'$R'", percent, human(count), total_size_h, human(bytes_per_sec), human_time(eta), src, finaldest), 0, '$W')
             }
-        }' total_size=$total_size \
+        }
+        END { print "'$B'Took " human_time(systime() - time_start) }' \
+               total_size=$total_size \
                total_size_h="$total_size_h" \
                count=$count \
                src="$src" finaldest="$finaldest"
@@ -130,7 +159,7 @@ IFS='
    done
 
 if [ "$cmd" = mv ]; then
-    printf 'Done moving'$R
+    echo 'Done moving'
 else
-    printf 'Done copying'$R
+    echo 'Done copying'
 fi
