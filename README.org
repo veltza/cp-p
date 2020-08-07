@@ -1,30 +1,22 @@
 * cp-p: Unix cp (and mv), with progress
   As the title says... cp and mv that shows progress.
 
+** How does it look like?
+   Something like this
+   #+BEGIN_SRC fundamental
+     $ cp-p foo bar
+     44% (302.99 MiB/684.51 MiB, 60.60 MiB/s, ETA: 6.3s) foo to bar
+   #+END_SRC
+
 ** Installation
    #+begin_src shell 
-  sudo make install
+     sudo make install
    #+end_src
 
 ** Usage with LF
    #+begin_src shell 
      # pasting done right
-     cmd paste ${{
-                    send="while read -r line; do lf -remote \"send $id echo \$line\"; done && lf -remote 'send reload'"
-                    load=$(lf -remote 'load')
-                    mode=$(echo "$load" | sed -n '1p')
-                    list=$(echo "$load" | sed '1d')
-                    s='' && [ ! -w . ] && s='sudo'
-                    case "$mode" in
-                        copy) cmd='cp-p';; move) cmd='mv-p';;
-                    esac
-                    cmd="$cmd --new-line"
-                    for f in $list; do
-                        $s sh -c "$cmd --backup=numbered \"$f\" . | $send &"
-                    done
-                    lf -remote 'send load'
-                    lf -remote 'send clear'
-                }}
+     cmd paste $cp-p --lf-paste $id
    #+end_src
 
 ** License
