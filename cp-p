@@ -124,12 +124,28 @@ total_size_h=$(echo $total_size | awk "$H_FUN"'{print human($1)}')
 count=0
 IFS='
 '; for src in $srcs; do
+
        # if same name
        fname=$(basename "$src")
        finaldest=$(realpath "$dest")
        if [ -e "$dest/$fname" ]; then
-           finaldest="$dest/$fname-new"
+           copy_n=
+           # keep looping till a new name is found
+           while :; do
+               finaldest="$dest/$fname"
+               finaldest=$(echo "$finaldest" |
+                               sed -En "s/(.+)\.(.+)/\1-copy$copy_n.\2/p")
+               [ "$finaldest" ] || finaldest="$dest/$fname-copy$copy_n"
+               if [ ! -e "$finaldest" ]; then
+                   break
+               elif [ ! "$copy_n" ]; then
+                   copy_n=1
+               else
+                   copy_n=$((copy_n + 1))
+               fi
+           done
        fi
+
        strace -q -ewrite $cmd $opts "$src" "$finaldest" 2>&1 |
            awk "$H_FUN"'
         BEGIN { time_start = systime() }
