@@ -28,13 +28,40 @@ function human_time(t) {
     return sprintf("%s%s%.1fs", h, m, s)
 }'
 
-copy() {
+help() {
+    orig=$(echo "$cmd" | head -n1)
+    echo "Usage: ${orig}-p [OPTION]... SOURCE DEST"
+    echo "Like ${orig} but with progress information."
+    echo
+    echo "  -F FILE    read source paths from FILE"
+    echo "  --new-line show every progress step in a new line"
+    echo "  --lf-paste to be used for lf file manager."
+    echo "             Add 'cmd paste \$cp-p --lf-paste \$id' to"
+    echo "             ~/.config/lf/lfrc"
+    echo "  --help     display this help and exit"
+    echo
+    echo "Check ${orig} --help for more options."
+
+    exit 1
+}
+
+main() {
+    if [ "$1" = '--lf-paste' ]; then
+        shift
+        lf_paste "$@"
+        return
+    fi
+
     if [ "$1" = --mv ]; then
         cmd='mv'
         shift
     else
         cmd='cp
 -r'
+    fi
+
+    if [ "$1" = --help ]; then
+        help
     fi
 
     if [ "$1" = --new-line ]; then
@@ -92,12 +119,7 @@ copy() {
     srcs=$(echo "$srcs" | head -c -1)
 
     if [ ! "$srcs" ] || [ ! "$dest" ]; then
-        if [ "$cmd" = mv ]; then
-            mv --help
-        else
-            cp --help
-        fi
-        exit 1
+        help
     fi
 
     # THE ACTUAL THING
@@ -200,15 +222,6 @@ lf_paste() {
     sh -c "$s $cmd --backup=numbered -F \"$srcF\" . | $send && rm -f \"$srcF\" &"
     lf -remote 'send load'
     lf -remote 'send clear'
-}
-
-main() {
-    if [ "$1" = '--lf-paste' ]; then
-        shift
-        lf_paste "$@"
-    else
-        copy "$@"
-    fi
 }
 
 main "$@"
