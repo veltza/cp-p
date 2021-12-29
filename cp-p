@@ -209,7 +209,7 @@ main() {
 lf_paste() {
     id="$1"
     send="while read -r line; do lf -remote \"send $id echo \$line\"; done && lf -remote 'send reload'"
-    load=$(lf -remote 'load')
+    load=$(cat ~/.local/share/lf/files)
     mode=$(echo "$load" | sed -n '1p')
     srcF=$(mktemp)
     echo "$load" | sed '1d' > "$srcF"
@@ -220,7 +220,7 @@ lf_paste() {
     cmd="$cmd --new-line"
     [ "$mode" = copy ] && cmd="$cmd -a"
     sh -c "$s $cmd --backup=numbered -F \"$srcF\" . | $send && rm -f \"$srcF\" &"
-    lf -remote 'send load'
+    rm ~/.local/share/lf/files
     lf -remote 'send clear'
 }
 
