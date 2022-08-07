@@ -176,7 +176,8 @@ main() {
            done
        fi
 
-       strace -q -ewrite $cmd $opts "$src" "$finaldest" 2>&1 |
+       strace -q -e write,copy_file_range,sendfile \
+              $cmd $opts "$src" "$finaldest" 2>&1 |
            awk "$H_FUN"'
         BEGIN { time_start = systime() }
         {
