@@ -1,18 +1,19 @@
-PREFIX = /usr
-CWD = $(CURDIR)
+PREFIX    = /usr/local
+BINPREFIX = $(DESTDIR)$(PREFIX)/bin
+CWD       = $(CURDIR)
 
 install:
-	mkdir -p $(DESTDIR)$(PREFIX)/bin/
-	cp -f cp-p $(DESTDIR)$(PREFIX)/bin/
-	cp -f mv-p $(DESTDIR)$(PREFIX)/bin/
+	mkdir -p $(BINPREFIX)
+	cp -f cp-p $(BINPREFIX)/
+	cp -f mv-p $(BINPREFIX)/
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/cp-p
-	rm -f $(DESTDIR)$(PREFIX)/bin/mv-p
+	rm -f $(BINPREFIX)/cp-p
+	rm -f $(BINPREFIX)/mv-p
 
 link:
-	mkdir -p $(DESTDIR)$(PREFIX)/bin/
-	ln -sf $(CWD)/cp-p $(DESTDIR)$(PREFIX)/bin/
-	ln -sf $(CWD)/mv-p $(DESTDIR)$(PREFIX)/bin/
+	mkdir -p $(BINPREFIX)
+	ln -sf $(CWD)/cp-p $(BINPREFIX)/
+	ln -sf $(CWD)/mv-p $(BINPREFIX)/
 
-.PHONY: install uninstall
+.PHONY: install uninstall link
